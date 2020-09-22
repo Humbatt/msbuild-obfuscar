@@ -9,7 +9,7 @@
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>MSBuild.Obfuscar</RootNamespace>
-    <AssemblyName>MSBuild.Obfuscar</AssemblyName>
+    <AssemblyName>Humbatt.MSBuild.Obfuscar</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>
@@ -49,7 +49,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="build\MSBuild.Obfuscar.targets">
+    <None Include="build\Humbatt.MSBuild.Obfuscar.targets">
       <SubType>Designer</SubType>
     </None>
     <None Include="content\Obfuscar.xml.transform" />
