@@ -6,6 +6,9 @@ on:
     branches: [develop, main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
@@ -26,9 +29,9 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
@@ -38,16 +41,22 @@ jobs:
   # A push to main publishes the version in the project file to nuget.org, tags it v<version> and
   # creates a GitHub release. A version that is already on nuget.org is skipped, so bump <Version>
   # in Humbatt.MSBuild.Obfuscar.csproj to release.
+  # Signs in to nuget.org with Trusted Publishing (OIDC), so no API key is stored.
   publish:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: test
     runs-on: ubuntu-latest
+    environment: nuget
+    concurrency:
+      group: release
+      cancel-in-progress: false
     permissions:
-      contents: write
+      contents: write # GitHub release and tag
+      id-token: write # Trusted Publishing
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
@@ -58,8 +67,14 @@ jobs:
           version=$(dotnet msbuild MSBuild.Obfuscar/Humbatt.MSBuild.Obfuscar.csproj -getProperty:Version)
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+      - name: NuGet login
+        id: nuget
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
       - name: Push to nuget.org
-        run: dotnet nuget push "artifacts/*.nupkg" --source https://api.nuget.org/v3/index.json --api-key "${{ secrets.NUGET_API_KEY }}" --skip-duplicate
+        run: dotnet nuget push "artifacts/*.nupkg" --source https://api.nuget.org/v3/index.json --api-key "${{ steps.nuget.outputs.NUGET_API_KEY }}" --skip-duplicate
 
       - name: Tag and GitHub release
         env:
