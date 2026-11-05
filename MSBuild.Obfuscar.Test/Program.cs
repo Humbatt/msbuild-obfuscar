@@ -1,17 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+namespace MSBuild.Obfuscar.Test;
 
-namespace MSBuild.Obfuscar.Test
+public static class Program
 {
-    class Program
+    public static int Main()
     {
-        static void Main(string[] args)
-        {
-            var message = "You can't read this!";
-            Console.WriteLine(message);
-            Console.ReadKey();
-        }
+        Console.WriteLine(SecretComputation(20));
+        return 0;
+    }
+
+    // The test checks this name is gone from the Release build.
+    private static int SecretComputation(int value)
+    {
+        return value + 22;
     }
 }
