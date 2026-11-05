@@ -56,7 +56,7 @@ Building and releasing
 
 GitHub Actions runs `test.sh` on Linux, Windows and macOS for every push and pull request.
 
-To release, push a tag `v<version>`, for example `git tag v2.2.50.1 && git push origin v2.2.50.1`. The workflow then packs that version, pushes it to nuget.org using the `NUGET_API_KEY` repository secret, and creates a GitHub release with the package attached.
+To release, bump `<Version>` in `MSBuild.Obfuscar/Humbatt.MSBuild.Obfuscar.csproj` and merge to `main`. The workflow then packs the package, pushes it to nuget.org using the `NUGET_API_KEY` repository secret, tags it `v<version>`, and creates a GitHub release with the package attached. A version that is already published is skipped.
 
 Obfuscar
 --------
