@@ -1,0 +1,71 @@
+# Release: on every push to main, packs and tests the package, pushes the version in
+# MSBuild.Obfuscar/Humbatt.MSBuild.Obfuscar.csproj to nuget.org, then tags the commit
+# v<version> and creates a GitHub release with the package attached. A version that is
+# already on nuget.org is skipped, so bump <Version> to release.
+# Signs in to nuget.org with Trusted Publishing (OIDC), so no API key is stored.
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: nuget
+    permissions:
+      contents: write # GitHub release and tag
+      id-token: write # Trusted Publishing
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.x'
+
+      - name: Pack and test
+        id: pack
+        run: |
+          ./test.sh
+          version=$(dotnet msbuild MSBuild.Obfuscar/Humbatt.MSBuild.Obfuscar.csproj -getProperty:Version)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          ls artifacts
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: drop
+          path: artifacts/*.nupkg
+
+      - name: NuGet login
+        id: nuget
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Push to nuget.org
+        run: dotnet nuget push "artifacts/*.nupkg" --api-key "${{ steps.nuget.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ steps.pack.outputs.version }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "$TAG is already released."
+          else
+            gh release create "$TAG" artifacts/*.nupkg --target "${{ github.sha }}" --title "$TAG" --generate-notes
+          fi

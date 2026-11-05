@@ -3,7 +3,7 @@ Humbatt.MSBuild.Obfuscar
 
 MSBuild targets that run [Obfuscar](https://www.obfuscar.com) after every Release build, on Windows, Linux and macOS.
 
-[![Build](https://github.com/Humbatt/msbuild-obfuscar/actions/workflows/build.yml/badge.svg)](https://github.com/Humbatt/msbuild-obfuscar/actions/workflows/build.yml)
+[![Build](https://github.com/Humbatt/msbuild-obfuscar/actions/workflows/ci.yml/badge.svg)](https://github.com/Humbatt/msbuild-obfuscar/actions/workflows/ci.yml)
 [![NuGet](https://img.shields.io/nuget/v/Humbatt.MSBuild.Obfuscar.svg)](https://www.nuget.org/packages/Humbatt.MSBuild.Obfuscar/)
 
 Usage
@@ -54,7 +54,7 @@ Building and releasing
 ./test.sh -p:ObfuscarRunner=exe    # the same with Obfuscar.Console.exe (Windows)
 ```
 
-GitHub Actions runs `test.sh` on Linux, Windows and macOS for every push and pull request.
+GitHub Actions: `ci.yml` runs `test.sh` on Linux, Windows and macOS for every pull request (and pushes to `develop`), so a change is checked before it merges. `release.yml` publishes.
 
 To release, bump `<Version>` in `MSBuild.Obfuscar/Humbatt.MSBuild.Obfuscar.csproj` and merge to `main`. The workflow then packs the package, pushes it to nuget.org with Trusted Publishing (no API key stored; the `nuget` environment and `NUGET_USER` secret), tags it `v<version>`, and creates a GitHub release with the package attached. A version that is already published is skipped.
 
