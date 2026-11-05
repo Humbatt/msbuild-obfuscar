@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/MSBuild.Obfuscar/">
+    <Project Path="MSBuild.Obfuscar/Humbatt.MSBuild.Obfuscar.csproj" />
+  </Folder>
+</Solution>

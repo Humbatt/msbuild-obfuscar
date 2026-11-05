@@ -1,61 +1,70 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <!--
 ***********************************************************************************************
-Humbatt.MSBuild.Obfuscator.targets
+Humbatt.MSBuild.Obfuscar.targets
 
-WARNING:  DO NOT MODIFY this file unless you are knowledgeable about MSBuild and have
-          created a backup copy.  Incorrect changes to this file will make it
-          impossible to load or build your projects from the command-line or the IDE.
+Runs Obfuscar after a Release build of a project that has a <ProjectName>.xml or Obfuscar.xml
+configuration, then replaces the build output with the obfuscated files. Works on Windows,
+Linux and macOS.
 
+Settings (all optional):
+  ObfuscarRunner          dotnet (default): the cross-platform Obfuscar console bundled in this
+                          package, run with the .NET host that is running the build (.NET 10+).
+                          exe: Obfuscar.Console.exe from the Obfuscar package (.NET Framework;
+                          Windows, or elsewhere with Mono).
+  SkipObfuscation         true to build without obfuscating.
+  ObfuscarConfigFile      The Obfuscar configuration file to use.
+                          Default: <ProjectName>.xml, else Obfuscar.xml, beside the project.
 ***********************************************************************************************
 -->
-<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
   <PropertyGroup>
+    <!-- Keep in step with ObfuscarVersion in Humbatt.MSBuild.Obfuscar.csproj. -->
+    <HumbattObfuscarVersion>2.2.50</HumbattObfuscarVersion>
 
-    <!-- ObfuscatorToolsPath -->
-    <ObfuscatorToolsPath Condition="'$(NuGetProjectStyle)' == 'PackageReference'">$(MSBuildThisFileDirectory)..\..\..\Obfuscar\2.2.28\tools</ObfuscatorToolsPath>
-    <ObfuscatorToolsPath Condition="'$(NuGetProjectStyle)' == 'PackageReference' And !Exists('$(ObfuscatorToolsPath)')">$(NuGetPackageRoot)Obfuscar\2.2.28\tools</ObfuscatorToolsPath>
+    <ObfuscarRunner Condition="'$(ObfuscarRunner)' == ''">dotnet</ObfuscarRunner>
 
-    <ObfuscatorToolsPath Condition="'$(NuGetProjectStyle)' != 'PackageReference'">$(MSBuildThisFileDirectory)..\..\Obfuscar.2.2.28\tools</ObfuscatorToolsPath>
-    <ObfuscatorToolsPath Condition="'$(NuGetProjectStyle)' != 'PackageReference' And !Exists('$(ObfuscatorToolsPath)')">$(SolutionDir)packages\Obfuscar.2.2.28\tools</ObfuscatorToolsPath>
+    <!-- dotnet runner: the bundled console, run by the build's own .NET host. -->
+    <ObfuscarDotnetToolPath Condition="'$(ObfuscarDotnetToolPath)' == ''">$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', 'tools', 'net', 'GlobalTools.dll'))</ObfuscarDotnetToolPath>
+    <ObfuscarDotnetHost Condition="'$(ObfuscarDotnetHost)' == ''">$(DOTNET_HOST_PATH)</ObfuscarDotnetHost>
+    <ObfuscarDotnetHost Condition="'$(ObfuscarDotnetHost)' == ''">dotnet</ObfuscarDotnetHost>
+
+    <!-- exe runner: Obfuscar.Console.exe from the Obfuscar package. NuGet's global packages folder
+         uses lower-case ids, which matters on case-sensitive file systems. -->
+    <ObfuscatorToolsPath Condition="'$(ObfuscatorToolsPath)' == '' And '$(NuGetPackageRoot)' != ''">$([MSBuild]::NormalizeDirectory('$(NuGetPackageRoot)', 'obfuscar', '$(HumbattObfuscarVersion)', 'tools'))</ObfuscatorToolsPath>
+    <ObfuscatorToolsPath Condition="'$(ObfuscatorToolsPath)' == '' Or !Exists('$(ObfuscatorToolsPath)')">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', 'Obfuscar.$(HumbattObfuscarVersion)', 'tools'))</ObfuscatorToolsPath>
+    <ObfuscatorExePath Condition="'$(ObfuscatorExePath)' == ''">$([MSBuild]::NormalizePath('$(ObfuscatorToolsPath)', 'Obfuscar.Console.exe'))</ObfuscatorExePath>
+
+    <ObfuscatorCommand Condition="'$(ObfuscatorCommand)' == '' And '$(ObfuscarRunner)' == 'dotnet'">"$(ObfuscarDotnetHost)" "$(ObfuscarDotnetToolPath)"</ObfuscatorCommand>
+    <ObfuscatorCommand Condition="'$(ObfuscatorCommand)' == '' And '$(OS)' == 'Windows_NT'">"$(ObfuscatorExePath)"</ObfuscatorCommand>
+    <ObfuscatorCommand Condition="'$(ObfuscatorCommand)' == ''">mono "$(ObfuscatorExePath)"</ObfuscatorCommand>
   </PropertyGroup>
 
   <PropertyGroup>
+    <!-- The configuration: <ProjectName>.xml, else Obfuscar.xml, next to the project file. -->
+    <!-- Not ProjectFileName: that is MSBuild's own property (the project file's name), which earlier
+         versions overwrote. -->
+    <ObfuscarConfigFile Condition="'$(ObfuscarConfigFile)' == ''">$([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', '$(MSBuildProjectName).xml'))</ObfuscarConfigFile>
+    <ObfuscarConfigFile Condition="!Exists('$(ObfuscarConfigFile)')">$([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', 'Obfuscar.xml'))</ObfuscarConfigFile>
 
-    <!-- Obfuscator command -->
-    <ObfuscatorExePath Condition=" '$(ObfuscatorExePath)' == '' ">$(ObfuscatorToolsPath)\Obfuscar.Console.exe</ObfuscatorExePath>
-
-    <ObfuscatorCommand Condition=" '$(OS)' == 'Windows_NT'">"$(ObfuscatorExePath)"</ObfuscatorCommand>
-    <ObfuscatorCommand Condition=" '$(OS)' != 'Windows_NT' ">mono --runtime=v4.0.30319 "$(ObfuscatorExePath)"</ObfuscatorCommand>
-
-    <!-- PaddedSolutionDir -->
-    <PaddedSolutionDir Condition=" '$(OS)' == 'Windows_NT'">"$(SolutionDir) "</PaddedSolutionDir>
-    <PaddedSolutionDir Condition=" '$(OS)' != 'Windows_NT' ">"$(SolutionDir)"</PaddedSolutionDir>
-
-    <!-- ProjectFileName -->
-    <ProjectFileName Condition=" '$(OS)' == 'Windows_NT'">$([System.IO.Path]::Combine($(ProjectDir), "$(ProjectName).xml"))</ProjectFileName>
-    <ProjectFileName Condition=" '$(OS)' == 'Windows_NT' AND !Exists('$(ProjectFileName)')">$([System.IO.Path]::Combine($(ProjectDir), "Obfuscar.xml"))</ProjectFileName>
-
-    <ProjectFileName Condition=" '$(OS)' != 'Windows_NT' ">$(ProjectDir)$(ProjectName).xml</ProjectFileName>
-    <ProjectFileName Condition=" '$(OS)' != 'Windows_NT' AND !Exists('$(ProjectFileName)')">$(ProjectDir)Obfuscar.xml</ProjectFileName>
-
-    <!-- Commands -->
-    <ObfuscateCommand>$(ObfuscatorCommand) "$(ProjectFileName)"</ObfuscateCommand>
+    <ObfuscateCommand>$(ObfuscatorCommand) "$(ObfuscarConfigFile)"</ObfuscateCommand>
   </PropertyGroup>
 
   <Target Name="CheckPrerequisites">
-    <!-- Raise an error if we're unable to locate Obfuscator.cli.exe  -->
-    <Error Condition="'$(DownloadObfuscatorExe)' != 'true' AND !Exists('$(ObfuscatorExePath)')" Text="Unable to locate '$(ObfuscatorExePath)'" />
+    <Error Condition="'$(ObfuscarRunner)' == 'dotnet' And !Exists('$(ObfuscarDotnetToolPath)')" Text="Unable to locate the Obfuscar console '$(ObfuscarDotnetToolPath)'." />
+    <Error Condition="'$(ObfuscarRunner)' != 'dotnet' And '$(DownloadObfuscatorExe)' != 'true' And !Exists('$(ObfuscatorExePath)')" Text="Unable to locate '$(ObfuscatorExePath)'." />
   </Target>
 
-  <Target Name="Obfuscator" AfterTargets="AfterBuild" DependsOnTargets="CheckPrerequisites" Condition="Exists('$(ProjectFileName)') and '$(ConfigurationName)' == 'Release'">
+  <Target Name="Obfuscator" AfterTargets="AfterBuild" DependsOnTargets="CheckPrerequisites" Condition="Exists('$(ObfuscarConfigFile)') And '$(Configuration)' == 'Release' And '$(SkipObfuscation)' != 'true'">
     <MakeDir Directories="$(TargetDir)obfuscated" />
-    <Exec WorkingDirectory="$(ProjectDir)" Command="$(ObfuscateCommand)" />
+    <Exec WorkingDirectory="$(MSBuildProjectDirectory)" Command="$(ObfuscateCommand)" />
     <ItemGroup>
-      <FilesToMove Include="$(TargetDir)obfuscated\*.*" />
+      <FilesToMove Include="$(TargetDir)obfuscated/*.*" />
     </ItemGroup>
-    <Move SourceFiles="@(FilesToMove)" DestinationFolder="$(TargetDir)" OverwriteReadOnlyFiles="true" Condition=" '$(OS)' == 'Windows_NT'" />
-    <RemoveDir Directories="$(TargetDir)obfuscated" Condition=" '$(OS)' == 'Windows_NT'" />
+    <!-- Every OS: before 2.2.50 this only happened on Windows, so other platforms shipped unobfuscated files. -->
+    <Move SourceFiles="@(FilesToMove)" DestinationFolder="$(TargetDir)" OverwriteReadOnlyFiles="true" />
+    <RemoveDir Directories="$(TargetDir)obfuscated" />
   </Target>
+
 </Project>
