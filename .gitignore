@@ -696,3 +696,6 @@ DerivedData/
 # Backup folder for Package Reference Convert tool in Visual Studio 2017
 
 # End of https://www.gitignore.io/api/xcode,rider,linux,macos,csharp,windows,visualstudio,visualstudiocode
+
+# test.sh restores the sample into its own packages folder
+MSBuild.Obfuscar.Test/.packages/
